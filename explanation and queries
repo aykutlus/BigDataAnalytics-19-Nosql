@@ -1,0 +1,122 @@
+In this task,libraries in Malaga and neighbourhoods of Malaga data sets are used for the geospatial queries and data source is https://datosabiertos.malaga.eu.
+==> Total number of libraries in Malaga is 37.
+
+QUERIES
+
+#1) How many libraries are there in the given coordinates?
+
+var neighborhood = db.barrios.findOne( { geometry: { $geoIntersects: { $geometry: { type: "Point", coordinates: [ -4.442475,36.68217 ] } } } } )
+db.bibliotecas.find( { geometry: { $geoWithin: { $geometry: neighborhood.geometry } } } ).count()
+
+	#==> What are the name of those?
+
+db.bibliotecas.find( { geometry: { $geoWithin: { $geometry: neighborhood.geometry } } },{"properties.NOMBRE":1,"_id":0} ).pretty()
+
+#2) Find the libraries around maximum 1km of given coordinates?
+db.bibliotecas.find({ geometry: { $nearSphere: { $geometry: { type: "Point", coordinates: [ -4.4216366,36.7213028 ] }, $maxDistance: 1000 } } } )
+
+
+#3) Find the libriaries in a given polygon.
+db.bibliotecas.find( { geometry : { $geoWithin : { $geometry : { type : "Polygon" , coordinates : [ [
+	
+			[
+              -4.437961578369141,
+              36.718384313677326
+            ],
+            [
+              -4.410238265991211,
+              36.718384313677326
+            ],
+            [
+              -4.410238265991211,
+              36.728978858916285
+            ],
+            [
+              -4.437961578369141,
+              36.728978858916285
+            ],
+            [
+              -4.437961578369141,
+              36.718384313677326
+            ]
+]] } } } } ).pretty()
+	
+.count()	==> 4 
+
+#4)  How many libraries are not there in the polygon?
+
+var bibliotecas_in = db.bibliotecas.find( { geometry : { $geoWithin : { $geometry : { type : "Polygon" , coordinates : [ [
+	
+			[
+              -4.437961578369141,
+              36.718384313677326
+            ],
+            [
+              -4.410238265991211,
+              36.718384313677326
+            ],
+            [
+              -4.410238265991211,
+              36.728978858916285
+            ],
+            [
+              -4.437961578369141,
+              36.728978858916285
+            ],
+            [
+              -4.437961578369141,
+              36.718384313677326
+            ]
+]] } } } } ).toArray()
+
+
+var bibliotecas_in_id = []
+
+bibliotecas_in.forEach(function (d) { bibliotecas_in_id.push(d.id);})
+
+db.bibliotecas.find({id:{$nin:bibliotecas_in_id}})
+					   
+db.bibliotecas.find({id:{$nin:bibliotecas_in_id}}).count() ==> 33
+					   
+
+PS: While number of libraries in a polygon is 4,number of libraries out of polygon is 33.Since total number of libraries in json file is 37, it is proved that mongo queries are correct.
+					   
+#5) Find the libraries in the circle of given coordinate.
+db.bibliotecas.find( { geometry :{ $geoWithin :{ $centerSphere : [ [-4.4216366,36.7213028 ] , 1.5 / 3963.2 ] }}})
+
+
+					
+#6) Find the libraries around this point, also calculate their distance to that point.Find your results in miles.List from the closest to furthest
+					
+db.bibliotecas.aggregate([
+    { "$geoNear": {
+        "near": {
+            "type": "Point",
+            "coordinates": [ -4.4216366,36.7213028 ]
+        }, 
+        "maxDistance": 1000,
+        "spherical": true,
+        "distanceField": "distance",
+        "distanceMultiplier": 0.000621371 //meters to miles
+    }},{$sort: {distance: 1}}
+]).pretty()
+
+					
+									
+		#==>Calculate the number of those libraries that is stated in above question.					
+					
+db.bibliotecas.aggregate([
+    { "$geoNear": {
+        "near": {
+            "type": "Point",
+            "coordinates": [ -4.4216366,36.7213028 ]
+        }, 
+        "maxDistance": 1000,
+        "spherical": true,
+        "distanceField": "distance",
+        "distanceMultiplier": 0.000621371
+    }},{ $group : { "_id": null , "number_of_lib" : {"$sum":1 } } }, { $project :{ _id : 0 } }
+])
+					
+					
+					
